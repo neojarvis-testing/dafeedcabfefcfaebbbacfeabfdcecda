@@ -1,8 +1,8 @@
 #!/bin/bash
 echo "🔍 Checking Hive..."
 
-schematool -dbType mysql -initSchema
-$HIVE_HOME/bin/hive --service metastore &
+#schematool -dbType mysql -initSchema
+#$HIVE_HOME/bin/hive --service metastore &
 
 # CLI Check
 echo "[✔] Running Hive shell test:"
