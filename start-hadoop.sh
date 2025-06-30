@@ -1,4 +1,4 @@
-#!/bin/bash
+# #!/bin/bash
 echo "Starting Hadoop daemons..."
 # Step 1: Start NameNode (HDFS master)
 hdfs --daemon start namenode
@@ -32,9 +32,9 @@ echo "Hadoop started!"
 # # Step 5: Stop NameNode (HDFS master)
 # hdfs --daemon stop namenode
 # echo "Hadoop stopped!"
- 
+
 echo "🔍 Checking Hadoop..."
  
 # CLI Check
 echo "[✔] Listing HDFS root directory:"
-hdfs dfs -ls /home/coder/project/workspace/ || echo "❌ HDFS not responding"
+hdfs dfs -ls /user/hueadmin/ || echo "❌ HDFS not responding"
