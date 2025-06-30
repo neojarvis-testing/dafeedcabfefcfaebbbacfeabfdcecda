@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 
 spark = SparkSession.builder.appName("SalesETL").enableHiveSupport().getOrCreate()
 
-df = spark.read.option("header", "false").csv("hdfs:///user/hueadmin/sales.csv")
+df = spark.read.option("header", "false").csv("hdfs:///user/hueadmin/sales/sales.csv")
 
 df = df.withColumnRenamed("_c0", "transaction_id") \
        .withColumnRenamed("_c1", "customer_id") \
