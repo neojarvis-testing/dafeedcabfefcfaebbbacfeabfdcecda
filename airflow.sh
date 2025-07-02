@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "🔍 Checking Airflow..."
-#airflow db migrate && 
+airflow db migrate && 
 airflow webserver --port 8080
 # CLI Check
 airflow db check || echo "❌ Airflow DB not initialized"
