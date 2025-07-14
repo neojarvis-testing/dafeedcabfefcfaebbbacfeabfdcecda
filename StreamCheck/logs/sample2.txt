@@ -1,5 +1,0 @@
-INFO Scheduled job started
-INFO Health check passed
-ERROR Failed to connect to database
-WARN Memory usage above threshold
-INFO Scheduled job completed

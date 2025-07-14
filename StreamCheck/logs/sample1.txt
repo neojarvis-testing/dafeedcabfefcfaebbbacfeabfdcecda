@@ -1,4 +1,0 @@
-INFO User login successful
-ERROR Disk full on /dev/sda1
-WARN CPU usage high
-DEBUG This will be ignored
