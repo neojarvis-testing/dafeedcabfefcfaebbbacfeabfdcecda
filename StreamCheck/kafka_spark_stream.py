@@ -3,7 +3,6 @@ findspark.init()
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
 from pyspark.sql.types import StructType, StringType
-from pyspark.sql.streaming import Trigger
 
 # Define schema of the incoming JSON messages
 schema = StructType() \
@@ -32,7 +31,7 @@ parsed_df = kafka_df.selectExpr("CAST(value AS STRING) as json_str") \
     .select("data.*")
 
 # Output to console
-query = df.writeStream \
+query = parsed_df.writeStream \
     .outputMode("append") \
     .format("console") \
     .trigger(processingTime="10 seconds") \
