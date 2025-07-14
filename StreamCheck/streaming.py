@@ -1,25 +1,43 @@
 import findspark
 findspark.init()
-from pyspark import SparkContext
-from pyspark.streaming import StreamingContext
-from pyspark.streaming.kafka import KafkaUtils
-import json
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, from_json
+from pyspark.sql.types import StructType, StringType, IntegerType
 
-sc = SparkContext("local[2]", "FraudDetector")
-ssc = StreamingContext(sc, 5)  # 5-second batch interval
+# 1. Create Spark session with Kafka support
+spark = SparkSession.builder \
+    .appName("FraudTransactionMonitor") \
+    .master("local[*]") \
+    .getOrCreate()
 
-# Kafka stream via Zookeeper
-kafka_stream = KafkaUtils.createStream(
-    ssc,
-    "localhost:2181",          # Zookeeper address
-    "transaction-group",       # Consumer group
-    {"transactions": 1}        # Topic map
-)
+spark.sparkContext.setLogLevel("WARN")
 
-# Parse and filter suspicious transactions
-transactions = kafka_stream.map(lambda msg: json.loads(msg[1]))
-suspicious = transactions.filter(lambda txn: txn["amount"] > 50000)
-suspicious.pprint()
+# 2. Define schema for incoming JSON data
+schema = StructType() \
+    .add("branch", StringType()) \
+    .add("amount", IntegerType()) \
+    .add("type", StringType())
 
-ssc.start()
-ssc.awaitTermination()
+# 3. Read from Kafka topic "transactions"
+df = spark.readStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", "localhost:9092") \
+    .option("subscribe", "transactions") \
+    .load()
+
+# 4. Convert binary value to string and parse JSON
+parsed = df.selectExpr("CAST(value AS STRING) as json") \
+    .select(from_json(col("json"), schema).alias("data")) \
+    .select("data.*")
+
+# 5. Filter suspicious transactions
+suspicious = parsed.filter(col("amount") > 50000)
+
+# 6. Output to console
+query = suspicious.writeStream \
+    .outputMode("append") \
+    .format("console") \
+    .option("truncate", "false") \
+    .start()
+
+query.awaitTermination()
