@@ -1,0 +1,9 @@
+user_id,event_type,value,timestamp
+user_01, login ,  100 ,2025-07-14 10:00:00
+user_02, purchase,abc,2025-07-14 10:01:00
+user_03,logout, 300,invalid_date
+,user_04,login,200,2025-07-14 10:02:00
+user_05,purchase,450,2025/07/14 10:03:00
+user_06,signup,50,2025-07-14 10:04:00
+user_07,,600,2025-07-14 10:05:00
+user_08,logout,-100,2025-07-14 10:06:00
