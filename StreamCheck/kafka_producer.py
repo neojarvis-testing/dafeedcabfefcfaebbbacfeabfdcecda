@@ -17,7 +17,7 @@ with open(file_path, 'r', encoding='utf-8') as file:
         if tweet:
             producer.send(topic, value=tweet.encode('utf-8'))
             print(f"Sent: {tweet}")
-            time.sleep(1.5)  # Simulate tweet interval
+            time.sleep(0.5)  # Simulate tweet interval
 
 producer.flush()
 producer.close()
