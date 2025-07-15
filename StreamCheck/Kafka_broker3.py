@@ -3,7 +3,6 @@ import json
 import time
 import random
 
-# Simulate broker behavior using a multi-partition topic on a single broker
 producer = KafkaProducer(
     bootstrap_servers=['localhost:9092'],
     value_serializer=lambda v: json.dumps(v).encode('utf-8'),
@@ -11,16 +10,20 @@ producer = KafkaProducer(
 )
 
 for i in range(10):
-    user_id = random.randint(1, 3)  # simulate 3 users
+    user_id = random.randint(1, 3)
     order = {
         "order_id": 1000 + i,
         "user_id": user_id,
         "amount": round(random.uniform(50, 500), 2)
     }
 
-    # Partitioning based on user_id
-    producer.send("order-events", key=user_id, value=order)
-    print(f"Sent to simulated partition for user_id {user_id}: {order}")
+    # Send the message and get metadata about the result
+    future = producer.send("order-events", key=user_id, value=order)
+    record_metadata = future.get(timeout=10)  # Block until ack
+
+    print(f"Sent order: {order} → Partition: {record_metadata.partition}")
+
     time.sleep(1)
 
 producer.flush()
+
