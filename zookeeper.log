@@ -87,3 +87,4 @@ nohup: ignoring input
 [2025-07-15 10:17:56,567] INFO zookeeper.request_throttler.shutdownTimeout = 10000 ms (org.apache.zookeeper.server.RequestThrottler)
 [2025-07-15 10:17:56,576] INFO Using checkIntervalMs=60000 maxPerMinute=10000 maxNeverUsedIntervalMs=0 (org.apache.zookeeper.server.ContainerManager)
 [2025-07-15 10:17:56,576] INFO ZooKeeper audit is disabled. (org.apache.zookeeper.audit.ZKAuditProvider)
+[2025-07-15 10:46:20,513] INFO Creating new log file: log.1 (org.apache.zookeeper.server.persistence.FileTxnLog)
