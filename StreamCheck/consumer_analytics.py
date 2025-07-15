@@ -2,9 +2,6 @@ from kafka import KafkaConsumer
 import json
 import os
 
-# Create output folder
-os.makedirs("logs_output", exist_ok=True)
-
 # Subscribe to all 3 topics
 topics = ["ecom-transactions", "ecom-inventory", "ecom-pageviews"]
 
@@ -17,19 +14,7 @@ consumer = KafkaConsumer(
     group_id='ecom-analytics-group'
 )
 
-# Mapping topic to output file
-topic_to_file = {
-    "ecom-transactions": "logs_output/transactions.jsonl",
-    "ecom-inventory": "logs_output/inventory.jsonl",
-    "ecom-pageviews": "logs_output/pageviews.jsonl"
-}
-
 print("📡 Listening to all e-commerce topics...")
-
-file_handles = {
-    topic: open(path, "a", encoding="utf-8")
-    for topic, path in topic_to_file.items()
-}
 
 try:
     for message in consumer:
@@ -41,6 +26,3 @@ try:
 
 except KeyboardInterrupt:
     print("🛑 Consumer stopped manually.")
-finally:
-    for fh in file_handles.values():
-        fh.close()
