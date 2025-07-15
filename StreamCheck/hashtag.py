@@ -45,12 +45,8 @@ def show_batch(batch_df, epoch_id):
             global_counts[word] = count
 
     # Print cumulative hashtag counts
-    print("+----------------+--------+")
-    print("|     word       | count  |")
-    print("+----------------+--------+")
     for word, count in sorted(global_counts.items(), key=lambda x: x[1], reverse=True):
         print(f"| {word:<14} | {count:<6} |")
-    print("+----------------+--------+")
 
 # Write output using foreachBatch
 query = hashtags.writeStream \
@@ -60,3 +56,5 @@ query = hashtags.writeStream \
 
 # Run for 60 seconds
 query.awaitTermination(60)
+
+
