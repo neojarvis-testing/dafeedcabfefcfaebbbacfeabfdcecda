@@ -1,39 +1,44 @@
 # spark_hashtag_counter.py
-import findspark
-findspark.init()
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import explode, split, col
+import pandas as pd
 
-# Create Spark session
+# Set up Spark session
 spark = SparkSession.builder \
     .appName("HashtagTrendAnalyzer") \
     .getOrCreate()
 
-# Read from Kafka
+# Optional: suppress Spark internal logs to reduce clutter
+spark.sparkContext.setLogLevel("ERROR")
+
+# Read stream from Kafka
 df = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "localhost:9092") \
     .option("subscribe", "tweets") \
     .load()
 
-# Extract tweet text
 lines = df.selectExpr("CAST(value AS STRING)")
 
-# Extract hashtags
 hashtags = lines.select(
-    explode(
-        split(col("value"), " ")
-    ).alias("word")
+    explode(split(col("value"), " ")).alias("word")
 ).filter(col("word").startswith("#"))
 
-# Count hashtags in micro-batches
-hashtag_counts = hashtags.groupBy("word").count().orderBy("count", ascending=False)
+# Track batch number
+batch_id = {"count": 0}
 
-# Output to console
-query = hashtag_counts.writeStream \
-    .outputMode("complete") \
-    .format("console") \
-    .option("truncate", False) \
+def show_batch(batch_df, epoch_id):
+    batch_id["count"] += 1
+    print(f"\n--- Batch: {batch_id['count']} ---")
+    result_df = batch_df.groupBy("word").count().orderBy("count", ascending=False)
+    result_df.show(truncate=False)
+
+# Attach foreachBatch logic
+query = hashtags.writeStream \
+    .foreachBatch(show_batch) \
+    .outputMode("append") \
     .start()
 
-query.awaitTermination()
+# Let it run for 60 seconds
+query.awaitTermination(60)
