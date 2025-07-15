@@ -1,4 +1,4 @@
-# spark_hashtag_counter.py
+# hashtag.py
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import explode, split, col
@@ -9,7 +9,7 @@ spark = SparkSession.builder \
     .appName("HashtagTrendAnalyzer") \
     .getOrCreate()
 
-# Optional: suppress Spark internal logs to reduce clutter
+# Optional: suppress Spark internal logs
 spark.sparkContext.setLogLevel("ERROR")
 
 # Read stream from Kafka
@@ -19,26 +19,45 @@ df = spark.readStream \
     .option("subscribe", "tweets") \
     .load()
 
+# Extract tweet text
 lines = df.selectExpr("CAST(value AS STRING)")
 
+# Extract hashtags
 hashtags = lines.select(
     explode(split(col("value"), " ")).alias("word")
 ).filter(col("word").startswith("#"))
 
-# Track batch number
-batch_id = {"count": 0}
+# Track cumulative counts across batches
+global_counts = {}
 
 def show_batch(batch_df, epoch_id):
-    batch_id["count"] += 1
-    print(f"\n--- Batch: {batch_id['count']} ---")
-    result_df = batch_df.groupBy("word").count().orderBy("count", ascending=False)
-    result_df.show(truncate=False)
+    global global_counts
+    print(f"\n--- Batch: {epoch_id + 1} ---")
 
-# Attach foreachBatch logic
+    # Count hashtags in current batch
+    batch_counts = batch_df.groupBy("word").count().toPandas()
+
+    for _, row in batch_counts.iterrows():
+        word = row["word"]
+        count = row["count"]
+        if word in global_counts:
+            global_counts[word] += count
+        else:
+            global_counts[word] = count
+
+    # Print cumulative hashtag counts
+    print("+----------------+--------+")
+    print("|     word       | count  |")
+    print("+----------------+--------+")
+    for word, count in sorted(global_counts.items(), key=lambda x: x[1], reverse=True):
+        print(f"| {word:<14} | {count:<6} |")
+    print("+----------------+--------+")
+
+# Write output using foreachBatch
 query = hashtags.writeStream \
     .foreachBatch(show_batch) \
-    .outputMode("append") \
+    .outputMode("update") \
     .start()
 
-# Let it run for 60 seconds
+# Run for 60 seconds
 query.awaitTermination(60)
