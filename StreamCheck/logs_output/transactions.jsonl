@@ -1,5 +1,0 @@
-{"order_id": "T1001", "user_id": "U001", "amount": 1299.0, "status": "success"}
-{"order_id": "T1002", "user_id": "U002", "amount": 349.0, "status": "failed"}
-{"order_id": "T1003", "user_id": "U001", "amount": 2499.0, "status": "success"}
-{"order_id": "T1004", "user_id": "U003", "amount": 799.0, "status": "success"}
-{"order_id": "T1005", "user_id": "U004", "amount": 499.0, "status": "success"}
