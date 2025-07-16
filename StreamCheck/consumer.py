@@ -11,3 +11,4 @@ consumer = KafkaConsumer(
 print("Waiting for messages...")
 for message in consumer:
     print(f"Consumed: {message.value}")
+
