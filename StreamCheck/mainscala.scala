@@ -6,3 +6,5 @@ object ValVarExample {
     println(s"Course: $course, Progress: $progress%")
   }
 }
+
+
