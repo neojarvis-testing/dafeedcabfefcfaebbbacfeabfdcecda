@@ -56,9 +56,9 @@ with tab2:
     if not ids:
         st.info("🎉 No unexplained fraudulent transactions available!")
     else:
-        selected_txn = st.selectbox("Select a fraudulent transaction ID:", ids)
+        selected_txn = st.selectbox("Select a fraudulent transaction ID:", ["Select a transaction ID"] + ids)
 
-        if selected_txn:
+        if selected_txn != "Select a transaction ID":
             txn = fraud_txns[fraud_txns["txn_id"] == selected_txn].iloc[0]
             st.markdown("### 🧾 Transaction Details")
             col1, col2 = st.columns(2)
@@ -77,12 +77,9 @@ with tab2:
                 with st.spinner("Calling Gemini API..."):
                     reason, suggestion = get_risk_explanation(txn.to_dict())
 
-                st.success("✅ Explanation received!")
-                st.markdown(f"#### 📌 Reason:\n{reason}")
-                st.markdown(f"#### 🛡 Suggestion:\n{suggestion}")
-
-                save = st.radio("Save this explanation to DB?", ["Yes", "No"], horizontal=True)
-                if save == "Yes":
+                if reason.lower() == "not found" or not reason.strip():
+                    st.error("⚠️ Gemini did not return a valid explanation.")
+                else:
                     conn = get_connection()
                     conn.execute("""
                         INSERT INTO genai_analysis (txn_id, risk_reason, mitigation_suggestion)
@@ -90,7 +87,11 @@ with tab2:
                     """, (txn["txn_id"], reason, suggestion))
                     conn.commit()
                     conn.close()
-                    st.success("✅ Saved to DB! Please refresh tab to remove it from dropdown.")
+
+                    st.success("✅ Explanation received and saved!")
+                    st.markdown(f"#### 📌 Reason:\n{reason}")
+                    st.markdown(f"#### 🛡 Suggestion:\n{suggestion}")
+                    st.warning("🔁 Please refresh the tab to update dropdown.")
 
 # --------------------- Tab 3 ---------------------
 with tab3:

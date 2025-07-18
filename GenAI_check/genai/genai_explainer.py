@@ -33,7 +33,7 @@ Transaction:
 - Device ID: {txn['device_id']}
 - Timestamp: {txn['timestamp']}
 
-Give your response in the following format:
+Give your response in the following format (use these keywords):
 Reason: <brief explanation>
 Mitigation: <preventive action>
 """
@@ -42,7 +42,7 @@ Mitigation: <preventive action>
         response = model.generate_content(prompt)
         text = response.text.strip()
 
-        # Parse based on keywords
+        # Default placeholders
         reason = "Not found"
         mitigation = "Not found"
 
@@ -52,8 +52,15 @@ Mitigation: <preventive action>
             elif line.lower().startswith("mitigation:"):
                 mitigation = line.split(":", 1)[1].strip()
 
+        # Handle missing content
+        if not reason or reason.lower() == "not found":
+            reason = "Gemini couldn't generate a valid reason for this transaction."
+
+        if not mitigation or mitigation.lower() == "not found":
+            mitigation = "Please investigate manually and follow up with enhanced transaction rules."
+
     except Exception as e:
-        reason = "Failed to generate explanation"
+        reason = "Failed to generate explanation due to API error."
         mitigation = str(e)
 
     return reason, mitigation
