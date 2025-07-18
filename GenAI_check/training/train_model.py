@@ -6,8 +6,8 @@ from sklearn.metrics import classification_report
 import joblib
 import os
 
-# Create necessary folders
-os.makedirs("../models", exist_ok=True)
+# ✅ Create models directory inside current working dir
+os.makedirs("models", exist_ok=True)
 
 # Load training data
 data_path = "data/transactions_labeled.csv"
@@ -45,9 +45,9 @@ y_pred = model.predict(X_test)
 print("📊 Classification Report:\n")
 print(classification_report(y_test, y_pred))
 
-# Save model and encoders
-joblib.dump(model, "../models/fraud_model.pkl")
-joblib.dump(label_encoders, "../models/label_encoders.pkl")
-joblib.dump(target_encoder, "../models/target_encoder.pkl")
+# ✅ Save model and encoders inside ./models/
+joblib.dump(model, "models/fraud_model.pkl")
+joblib.dump(label_encoders, "models/label_encoders.pkl")
+joblib.dump(target_encoder, "models/target_encoder.pkl")
 
-print("\n✅ Model training complete. Files saved in '../models/' directory.")
+print("\n✅ Model training complete. Files saved in 'models/' directory.")

@@ -4,15 +4,29 @@ from pyspark.sql.types import StructType, StringType, DoubleType
 import pandas as pd
 import joblib
 import sqlite3
+import os
 
+# -----------------------------
+# Path setup (absolute-relative fix)
+# -----------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, '../models/fraud_model.pkl')
+ENCODERS_PATH = os.path.join(BASE_DIR, '../models/label_encoders.pkl')
+TARGET_ENCODER_PATH = os.path.join(BASE_DIR, '../models/target_encoder.pkl')
+DB_PATH = os.path.join(BASE_DIR, '../db/genai_fraud.db')
+
+# -----------------------------
 # Load trained ML model & encoders
-model = joblib.load("models/fraud_model.pkl")
-encoders = joblib.load("models/label_encoders.pkl")
-target_encoder = joblib.load("models/target_encoder.pkl")
+# -----------------------------
+model = joblib.load(MODEL_PATH)
+encoders = joblib.load(ENCODERS_PATH)
+target_encoder = joblib.load(TARGET_ENCODER_PATH)
 
-# SQLite setup
+# -----------------------------
+# Save to SQLite DB
+# -----------------------------
 def save_to_db(record, prediction):
-    conn = sqlite3.connect("db/genai_fraud.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO transactions (
@@ -27,7 +41,9 @@ def save_to_db(record, prediction):
     conn.commit()
     conn.close()
 
-# Define schema
+# -----------------------------
+# Kafka schema
+# -----------------------------
 schema = StructType() \
     .add("txn_id", StringType()) \
     .add("timestamp", StringType()) \
@@ -39,7 +55,9 @@ schema = StructType() \
     .add("ip_address", StringType()) \
     .add("device_id", StringType())
 
+# -----------------------------
 # Spark session
+# -----------------------------
 spark = SparkSession.builder \
     .appName("FraudDetectionConsumer") \
     .master("local[*]") \
@@ -47,7 +65,9 @@ spark = SparkSession.builder \
 
 spark.sparkContext.setLogLevel("WARN")
 
-# Read Kafka stream
+# -----------------------------
+# Kafka stream
+# -----------------------------
 df_kafka_raw = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "localhost:9092") \
@@ -55,17 +75,17 @@ df_kafka_raw = spark.readStream \
     .option("startingOffsets", "latest") \
     .load()
 
-# Parse Kafka JSON
 df_parsed = df_kafka_raw.selectExpr("CAST(value AS STRING) as json") \
     .select(from_json(col("json"), schema).alias("data")) \
     .select("data.*")
 
-# Define ML processing function
+# -----------------------------
+# Per-row processing
+# -----------------------------
 def process_row(row):
     row_dict = row.asDict()
     df = pd.DataFrame([row_dict])
 
-    # Encode categorical features
     for col_name in encoders:
         df[col_name] = encoders[col_name].transform(df[col_name])
 
@@ -75,13 +95,17 @@ def process_row(row):
 
     save_to_db(row_dict, decoded_label)
 
-# Stream handler
+# -----------------------------
+# Batch handler
+# -----------------------------
 def foreach_batch(df, epoch_id):
     df.persist()
     df.foreach(process_row)
     df.unpersist()
 
-# Start stream
+# -----------------------------
+# Start streaming
+# -----------------------------
 query = df_parsed.writeStream \
     .foreachBatch(foreach_batch) \
     .start()
