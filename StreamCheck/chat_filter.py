@@ -1,35 +1,38 @@
-from pyspark import SparkContext
-from pyspark.streaming import StreamingContext
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, udf
+from pyspark.sql.types import StringType, BooleanType
 
 # Load bad words
 with open("profanity_words.txt", "r") as f:
-    bad_words = set(word.strip().lower() for word in f.readlines())
+    BAD_WORDS = set(word.strip().lower() for word in f.readlines())
 
-def filter_profanity(line):
-    words = line.strip().lower().split()
-    return any(word in bad_words for word in words)
+# UDFs
+def contains_profanity(message):
+    words = message.lower().split()
+    return any(word in BAD_WORDS for word in words)
 
-def extract_username(line):
-    if ":" in line:
-        return line.split(":")[0]
-    return "Unknown"
+def format_alert(message):
+    username = message.split(":")[0] if ":" in message else "Unknown"
+    return f"[ALERT] Profanity from {username}: \"{message}\""
 
-if __name__ == "__main__":
-    sc = SparkContext(appName="ChatProfanityFilter")
-    sc.setLogLevel("ERROR")
+profanity_udf = udf(contains_profanity, BooleanType())   # ✅ MUST return BooleanType
+alert_udf = udf(format_alert, StringType())
 
-    ssc = StreamingContext(sc, 2)
-    
-    # Listen on all interfaces (important!)
-    lines = ssc.socketTextStream("0.0.0.0", 9999)
+# Spark setup
+spark = SparkSession.builder.appName("StructuredChatProfanityFilter").getOrCreate()
+spark.sparkContext.setLogLevel("ERROR")
 
-    def alert_only(rdd):
-        for line in rdd.collect():
-            if filter_profanity(line):
-                username = extract_username(line)
-                print(f"[ALERT] Profanity detected from {username}: \"{line}\"")
+# Read socket stream
+lines = spark.readStream.format("socket").option("host", "localhost").option("port", 9999).load()
 
-    lines.foreachRDD(alert_only)
+# Filter + alert formatting
+alerts = lines.filter(profanity_udf(col("value"))).withColumn("alert", alert_udf(col("value"))).select("alert")
 
-    ssc.start()
-    ssc.awaitTermination()
+# Print only alerts
+def show_alerts(df, _):
+    for row in df.collect():
+        print(row.alert)
+
+# Stream
+query = alerts.writeStream.foreachBatch(show_alerts).outputMode("append").start()
+query.awaitTermination()
