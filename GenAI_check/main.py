@@ -35,6 +35,8 @@ with tab1:
         st.dataframe(df, use_container_width=True)
         st.success("🔄 Refreshed latest transactions!")
 
+    st.caption("⏱ Showing latest 20 transactions. Click to refresh manually.")
+
 # --------------------- Tab 2 ---------------------
 with tab2:
     st.subheader("🔍 Fraud Case Analyzer")
@@ -49,15 +51,14 @@ with tab2:
     """, conn)
     conn.close()
 
-    txn_ids = fraud_txns["txn_id"].tolist()
+    ids = fraud_txns["txn_id"].tolist()
 
-    if not txn_ids:
+    if not ids:
         st.info("🎉 No unexplained fraudulent transactions available!")
     else:
-        options = ["Select a transaction_id"] + txn_ids
-        selected_txn = st.selectbox("Choose a fraudulent transaction:", options)
+        selected_txn = st.selectbox("Select a fraudulent transaction ID:", ids)
 
-        if selected_txn != "Select a transaction_id":
+        if selected_txn:
             txn = fraud_txns[fraud_txns["txn_id"] == selected_txn].iloc[0]
             st.markdown("### 🧾 Transaction Details")
             col1, col2 = st.columns(2)
@@ -80,7 +81,7 @@ with tab2:
                 st.markdown(f"#### 📌 Reason:\n{reason}")
                 st.markdown(f"#### 🛡 Suggestion:\n{suggestion}")
 
-                save = st.radio("Save this explanation to DB?", ["Yes", "No"], index=None, horizontal=True)
+                save = st.radio("Save this explanation to DB?", ["Yes", "No"], horizontal=True)
                 if save == "Yes":
                     conn = get_connection()
                     conn.execute("""
