@@ -2,26 +2,28 @@
 
 import os
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage
+import google.generativeai as genai
 
-# Load Gemini API key
+# Load .env
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Initialize Gemini model (flash for speed)
-llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY)
+# Configure Gemini (Flash model)
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel(model_name="gemini-2.0-flash")
 
 def get_risk_explanation(txn: dict) -> tuple[str, str]:
     """
-    Given a risky transaction (as dict), return (reason, mitigation).
+    Given a risky transaction dictionary, returns:
+    (reason for risk, mitigation suggestion)
     """
     prompt = f"""
-You are an expert fraud analyst. Analyze the following transaction and explain:
-1. Why this transaction may be risky.
-2. What could be done to prevent such a fraud in the future.
+You are a fraud analyst. Analyze the following transaction and provide:
 
-Transaction Details:
+1. Why this transaction may be risky
+2. How to prevent such risks in the future
+
+Transaction:
 - Type: {txn['txn_type']}
 - Amount: {txn['amount']}
 - Source Account: {txn['source_account']}
@@ -30,15 +32,18 @@ Transaction Details:
 - IP Address: {txn['ip_address']}
 - Device ID: {txn['device_id']}
 - Timestamp: {txn['timestamp']}
-    """
+"""
 
     try:
-        response = llm.invoke([HumanMessage(content=prompt)])
-        parts = response.content.strip().split("\n")
-        reason = next((line.split(":", 1)[1].strip() for line in parts if "risky" in line.lower()), "Risk explanation not found")
-        mitigation = next((line.split(":", 1)[1].strip() for line in parts if "prevent" in line.lower()), "Mitigation suggestion not found")
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+
+        # Basic extraction
+        lines = text.split("\n")
+        reason = next((line.split(":", 1)[1].strip() for line in lines if "risky" in line.lower()), "Reason not found")
+        mitigation = next((line.split(":", 1)[1].strip() for line in lines if "prevent" in line.lower()), "Mitigation not found")
     except Exception as e:
-        reason = "GenAI explanation failed"
+        reason = "Failed to generate explanation"
         mitigation = str(e)
 
     return reason, mitigation
