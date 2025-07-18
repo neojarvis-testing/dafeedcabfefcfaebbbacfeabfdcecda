@@ -12,7 +12,7 @@ producer = KafkaProducer(
     value_serializer=lambda v: json.dumps(v).encode("utf-8")
 )
 
-ACCOUNTS = ["AC001", "AC002", "AC003", "AC004", "AC005"]
+ACCOUNTS = [f"AC{str(i).zfill(3)}" for i in range(1, 51)]
 TXN_TYPES = ["NEFT", "UPI", "CHEQUE", "MANDATE"]
 DEVICE_IDS = ["web", "mobile", "tablet"]
 STATUSES = ["Success", "Pending", "Failed"]
