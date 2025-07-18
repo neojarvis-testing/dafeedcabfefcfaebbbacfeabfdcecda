@@ -17,7 +17,7 @@ df = pd.read_csv(data_path)
 # Drop non-feature columns
 df.drop(columns=["txn_id", "timestamp"], inplace=True)
 
-# Label encode categorical features with 'unknown' class
+# Label encode categorical features with safe handling of "unknown"
 categorical_cols = ["txn_type", "source_account", "dest_account", "status", "ip_address", "device_id"]
 label_encoders = {}
 
@@ -26,9 +26,9 @@ for col in categorical_cols:
     df[col] = df[col].astype(str)
     le.fit(df[col])
 
-    # Add "unknown" to encoder classes if not present
+    # ✅ Ensure 'unknown' is added and sorted properly
     if "unknown" not in le.classes_:
-        le.classes_ = np.append(le.classes_, "unknown")
+        le.classes_ = np.unique(np.append(le.classes_, "unknown"))
 
     df[col] = le.transform(df[col])
     label_encoders[col] = le

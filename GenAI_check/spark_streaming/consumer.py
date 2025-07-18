@@ -86,13 +86,20 @@ def process_row(row):
     row_dict = row.asDict()
     df = pd.DataFrame([row_dict])
 
-    for col_name in encoders:
-        df[col_name] = encoders[col_name].transform(df[col_name])
+    # Convert to string and handle unknowns
+    for col_name, encoder in encoders.items():
+        df[col_name] = df[col_name].astype(str)
+        df[col_name] = df[col_name].apply(
+            lambda val: val if val in encoder.classes_ else "unknown"
+        )
+        df[col_name] = encoder.transform(df[col_name])
 
+    # Feature selection
     X = df[['txn_type', 'amount', 'source_account', 'dest_account', 'status', 'ip_address', 'device_id']]
     prediction = model.predict(X)[0]
     decoded_label = target_encoder.inverse_transform([prediction])[0]
 
+    # Save to DB
     save_to_db(row_dict, decoded_label)
 
 # -----------------------------
