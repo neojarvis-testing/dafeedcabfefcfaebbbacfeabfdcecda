@@ -16,10 +16,12 @@ def extract_username(line):
 
 if __name__ == "__main__":
     sc = SparkContext(appName="ChatProfanityFilter")
-    sc.setLogLevel("ERROR")  # 🔕 Suppress INFO logs
+    sc.setLogLevel("ERROR")
 
-    ssc = StreamingContext(sc, 2)  # 2-second batch
-    lines = ssc.socketTextStream("localhost", 9999)
+    ssc = StreamingContext(sc, 2)
+    
+    # Listen on all interfaces (important!)
+    lines = ssc.socketTextStream("0.0.0.0", 9999)
 
     def alert_only(rdd):
         for line in rdd.collect():
