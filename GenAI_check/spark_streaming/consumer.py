@@ -28,16 +28,30 @@ target_encoder = joblib.load(TARGET_ENCODER_PATH)
 def save_to_db(record, prediction):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+
+    # Step 1: Insert raw transaction
     cursor.execute("""
-        INSERT INTO transactions (
+        INSERT OR IGNORE INTO transactions (
             txn_id, timestamp, txn_type, amount, source_account,
-            dest_account, status, ip_address, device_id, is_fraud
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            dest_account, status, ip_address, device_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         record["txn_id"], record["timestamp"], record["txn_type"], record["amount"],
         record["source_account"], record["dest_account"], record["status"],
-        record["ip_address"], record["device_id"], prediction
+        record["ip_address"], record["device_id"]
     ))
+
+    # Step 2: Insert prediction (binary label: risky/fraud = 1, normal = 0)
+    is_risky = 1 if prediction == "fraud" else 0
+
+    cursor.execute("""
+        INSERT OR REPLACE INTO risk_predictions (
+            txn_id, is_risky, model_confidence
+        ) VALUES (?, ?, ?)
+    """, (
+        record["txn_id"], is_risky, None  # Confidence can be added later if needed
+    ))
+
     conn.commit()
     conn.close()
 
