@@ -22,20 +22,29 @@ def get_connection():
 # --------------------- Tab 1 ---------------------
 with tab1:
     st.subheader("📡 Live Transaction Stream (Kafka + ML)")
-    with st.empty():
-        while True:
-            conn = get_connection()
-            df = pd.read_sql_query("""
-                SELECT t.*, r.is_risky, r.model_confidence
-                FROM transactions t
-                LEFT JOIN risk_predictions r ON t.txn_id = r.txn_id
-                ORDER BY t.timestamp DESC
-                LIMIT 20
-            """, conn)
-            conn.close()
 
-            st.dataframe(df, use_container_width=True)
-            time.sleep(5)
+    placeholder = st.empty()
+    refresh_interval = 5  # seconds
+
+    def load_latest_transactions():
+        conn = get_connection()
+        df = pd.read_sql_query("""
+            SELECT t.*, r.is_risky, r.model_confidence
+            FROM transactions t
+            LEFT JOIN risk_predictions r ON t.txn_id = r.txn_id
+            ORDER BY t.timestamp DESC
+            LIMIT 20
+        """, conn)
+        conn.close()
+        return df
+
+    with placeholder.container():
+        latest_df = load_latest_transactions()
+        st.dataframe(latest_df, use_container_width=True)
+        st.caption(f"⏱ Refreshed every {refresh_interval} seconds automatically")
+
+    time.sleep(refresh_interval)
+    st.experimental_rerun()
 
 # --------------------- Tab 2 ---------------------
 with tab2:
@@ -52,29 +61,36 @@ with tab2:
     conn.close()
 
     ids = fraud_txns["txn_id"].tolist()
-    selected_txn = st.selectbox("Select a fraudulent transaction ID:", ids)
 
-    if selected_txn:
-        txn = fraud_txns[fraud_txns["txn_id"] == selected_txn].iloc[0]
-        st.json(txn.to_dict())
+    if not ids:
+        st.info("🎉 No unexplained fraudulent transactions available!")
+    else:
+        selected_txn = st.selectbox("Select a fraudulent transaction ID:", ids)
 
-        if st.button("🧠 Get GenAI Explanation"):
-            reason, suggestion = get_risk_explanation(txn.to_dict())
-            st.success("✅ Explanation received!")
-            st.markdown(f"**📌 Reason:** {reason}")
-            st.markdown(f"**🛡 Suggestion:** {suggestion}")
+        if selected_txn:
+            txn = fraud_txns[fraud_txns["txn_id"] == selected_txn].iloc[0]
+            st.json(txn.to_dict())
 
-            save = st.radio("Save this explanation to DB?", ["Yes", "No"])
-            if save == "Yes":
-                conn = get_connection()
-                conn.execute("""
-                    INSERT INTO genai_analysis (txn_id, risk_reason, mitigation_suggestion)
-                    VALUES (?, ?, ?)
-                """, (txn["txn_id"], reason, suggestion))
-                conn.commit()
-                conn.close()
-                st.success("Saved and removed from dropdown!")
-                st.experimental_rerun()
+            if st.button("🧠 Get GenAI Explanation"):
+                with st.spinner("Calling Gemini API..."):
+                    reason, suggestion = get_risk_explanation(txn.to_dict())
+                st.success("✅ Explanation received!")
+                st.markdown(f"**📌 Reason:** {reason}")
+                st.markdown(f"**🛡 Suggestion:** {suggestion}")
+
+                save = st.radio("Save this explanation to DB?", ["Yes", "No"])
+                if save == "Yes":
+                    conn = get_connection()
+                    conn.execute("""
+                        INSERT INTO genai_analysis (txn_id, risk_reason, mitigation_suggestion)
+                        VALUES (?, ?, ?)
+                    """, (txn["txn_id"], reason, suggestion))
+                    conn.commit()
+                    conn.close()
+                    st.success("✅ Saved to DB and removed from dropdown!")
+                    st.experimental_rerun()
+                elif save == "No":
+                    st.warning("❌ Discarded. Transaction remains in dropdown.")
 
 # --------------------- Tab 3 ---------------------
 with tab3:
@@ -91,6 +107,6 @@ with tab3:
     conn.close()
 
     if df.empty:
-        st.info("No transactions explained yet.")
+        st.info("🕵️‍♀️ No transactions explained yet. Go to Tab 2 to analyze some!")
     else:
         st.dataframe(df, use_container_width=True)
