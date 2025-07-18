@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
@@ -16,13 +17,20 @@ df = pd.read_csv(data_path)
 # Drop non-feature columns
 df.drop(columns=["txn_id", "timestamp"], inplace=True)
 
-# Label encode categorical features
+# Label encode categorical features with 'unknown' class
 categorical_cols = ["txn_type", "source_account", "dest_account", "status", "ip_address", "device_id"]
 label_encoders = {}
 
 for col in categorical_cols:
     le = LabelEncoder()
-    df[col] = le.fit_transform(df[col])
+    df[col] = df[col].astype(str)
+    le.fit(df[col])
+
+    # Add "unknown" to encoder classes if not present
+    if "unknown" not in le.classes_:
+        le.classes_ = np.append(le.classes_, "unknown")
+
+    df[col] = le.transform(df[col])
     label_encoders[col] = le
 
 # Encode target variable
