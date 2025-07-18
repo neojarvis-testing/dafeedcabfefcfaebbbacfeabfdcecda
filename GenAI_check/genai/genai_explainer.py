@@ -32,16 +32,26 @@ Transaction:
 - IP Address: {txn['ip_address']}
 - Device ID: {txn['device_id']}
 - Timestamp: {txn['timestamp']}
+
+Give your response in the following format:
+Reason: <brief explanation>
+Mitigation: <preventive action>
 """
 
     try:
         response = model.generate_content(prompt)
         text = response.text.strip()
 
-        # Basic extraction
-        lines = text.split("\n")
-        reason = next((line.split(":", 1)[1].strip() for line in lines if "risky" in line.lower()), "Reason not found")
-        mitigation = next((line.split(":", 1)[1].strip() for line in lines if "prevent" in line.lower()), "Mitigation not found")
+        # Parse based on keywords
+        reason = "Not found"
+        mitigation = "Not found"
+
+        for line in text.splitlines():
+            if line.lower().startswith("reason:"):
+                reason = line.split(":", 1)[1].strip()
+            elif line.lower().startswith("mitigation:"):
+                mitigation = line.split(":", 1)[1].strip()
+
     except Exception as e:
         reason = "Failed to generate explanation"
         mitigation = str(e)

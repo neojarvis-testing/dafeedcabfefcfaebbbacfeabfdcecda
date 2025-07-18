@@ -1,7 +1,6 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
-import time
 from genai.genai_explainer import get_risk_explanation
 
 DB_PATH = "db/genai_fraud.db"
@@ -23,10 +22,7 @@ def get_connection():
 with tab1:
     st.subheader("📡 Live Transaction Stream (Kafka + ML)")
 
-    placeholder = st.empty()
-    refresh_interval = 5  # seconds
-
-    def load_latest_transactions():
+    if st.button("🔁 Refresh Transactions"):
         conn = get_connection()
         df = pd.read_sql_query("""
             SELECT t.*, r.is_risky, r.model_confidence
@@ -36,15 +32,10 @@ with tab1:
             LIMIT 20
         """, conn)
         conn.close()
-        return df
+        st.dataframe(df, use_container_width=True)
+        st.success("🔄 Refreshed latest transactions!")
 
-    with placeholder.container():
-        latest_df = load_latest_transactions()
-        st.dataframe(latest_df, use_container_width=True)
-        st.caption(f"⏱ Refreshed every {refresh_interval} seconds automatically")
-
-    time.sleep(refresh_interval)
-    st.experimental_rerun()
+    st.caption("⏱ Showing latest 20 transactions. Click to refresh manually.")
 
 # --------------------- Tab 2 ---------------------
 with tab2:
@@ -69,16 +60,28 @@ with tab2:
 
         if selected_txn:
             txn = fraud_txns[fraud_txns["txn_id"] == selected_txn].iloc[0]
-            st.json(txn.to_dict())
+            st.markdown("### 🧾 Transaction Details")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write(f"**Transaction ID:** {txn['txn_id']}")
+                st.write(f"**Type:** {txn['txn_type']}")
+                st.write(f"**Status:** {txn['status']}")
+                st.write(f"**Amount:** ₹{txn['amount']}")
+            with col2:
+                st.write(f"**Source Account:** {txn['source_account']}")
+                st.write(f"**Destination Account:** {txn['dest_account']}")
+                st.write(f"**IP Address:** {txn['ip_address']}")
+                st.write(f"**Device ID:** {txn['device_id']}")
 
             if st.button("🧠 Get GenAI Explanation"):
                 with st.spinner("Calling Gemini API..."):
                     reason, suggestion = get_risk_explanation(txn.to_dict())
-                st.success("✅ Explanation received!")
-                st.markdown(f"**📌 Reason:** {reason}")
-                st.markdown(f"**🛡 Suggestion:** {suggestion}")
 
-                save = st.radio("Save this explanation to DB?", ["Yes", "No"])
+                st.success("✅ Explanation received!")
+                st.markdown(f"#### 📌 Reason:\n{reason}")
+                st.markdown(f"#### 🛡 Suggestion:\n{suggestion}")
+
+                save = st.radio("Save this explanation to DB?", ["Yes", "No"], horizontal=True)
                 if save == "Yes":
                     conn = get_connection()
                     conn.execute("""
@@ -87,10 +90,7 @@ with tab2:
                     """, (txn["txn_id"], reason, suggestion))
                     conn.commit()
                     conn.close()
-                    st.success("✅ Saved to DB and removed from dropdown!")
-                    st.experimental_rerun()
-                elif save == "No":
-                    st.warning("❌ Discarded. Transaction remains in dropdown.")
+                    st.success("✅ Saved to DB! Please refresh tab to remove it from dropdown.")
 
 # --------------------- Tab 3 ---------------------
 with tab3:
