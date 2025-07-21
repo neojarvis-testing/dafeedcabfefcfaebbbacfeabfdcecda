@@ -5,13 +5,13 @@ from genai.genai_explainer import get_risk_explanation
 
 DB_PATH = "db/genai_fraud.db"
 
-st.set_page_config(page_title="💸 Fraud Risk Dashboard", layout="wide")
-st.title("🛡️ GenAI-Powered Fraud Detection System")
+st.set_page_config(page_title="Fraud Risk Dashboard", layout="wide")
+st.title("GenAI-Powered Fraud Detection System")
 
 tab1, tab2, tab3 = st.tabs([
-    "📊 Transaction Monitor", 
-    "🚩 Fraud Case Analyzer", 
-    "📁 Explained Cases Log"
+    "Transaction Monitor", 
+    "Fraud Case Analyzer", 
+    "Explained Cases Log"
 ])
 
 # Helper
@@ -20,7 +20,7 @@ def get_connection():
 
 # --------------------- Tab 1 ---------------------
 with tab1:
-    st.subheader("📡 Live Transaction Stream (Kafka + ML)")
+    st.subheader("Live Transaction Stream (Kafka + ML)")
 
     if st.button("🔁 Refresh Transactions"):
         conn = get_connection()
@@ -39,7 +39,7 @@ with tab1:
 
 # --------------------- Tab 2 ---------------------
 with tab2:
-    st.subheader("🔍 Fraud Case Analyzer")
+    st.subheader("Fraud Case Analyzer")
 
     conn = get_connection()
     fraud_txns = pd.read_sql_query("""
@@ -54,13 +54,13 @@ with tab2:
     ids = fraud_txns["txn_id"].tolist()
 
     if not ids:
-        st.info("🎉 No unexplained fraudulent transactions available!")
+        st.info("No unexplained fraudulent transactions available!")
     else:
         selected_txn = st.selectbox("Select a fraudulent transaction ID:", ["Select a transaction ID"] + ids)
 
         if selected_txn != "Select a transaction ID":
             txn = fraud_txns[fraud_txns["txn_id"] == selected_txn].iloc[0]
-            st.markdown("### 🧾 Transaction Details")
+            st.markdown("### Transaction Details")
             col1, col2 = st.columns(2)
             with col1:
                 st.write(f"**Transaction ID:** {txn['txn_id']}")
@@ -73,12 +73,12 @@ with tab2:
                 st.write(f"**IP Address:** {txn['ip_address']}")
                 st.write(f"**Device ID:** {txn['device_id']}")
 
-            if st.button("🧠 Get GenAI Explanation"):
+            if st.button("Get GenAI Explanation"):
                 with st.spinner("Calling Gemini API..."):
                     reason, suggestion = get_risk_explanation(txn.to_dict())
 
                 if reason.lower() == "not found" or not reason.strip():
-                    st.error("⚠️ Gemini did not return a valid explanation.")
+                    st.error("Gemini did not return a valid explanation.")
                 else:
                     conn = get_connection()
                     conn.execute("""
@@ -89,13 +89,13 @@ with tab2:
                     conn.close()
 
                     st.success("✅ Explanation received and saved!")
-                    st.markdown(f"#### 📌 Reason:\n{reason}")
-                    st.markdown(f"#### 🛡 Suggestion:\n{suggestion}")
+                    st.markdown(f"#### Reason:\n{reason}")
+                    st.markdown(f"#### Suggestion:\n{suggestion}")
                     st.warning("🔁 Please refresh the tab to update dropdown.")
 
 # --------------------- Tab 3 ---------------------
 with tab3:
-    st.subheader("📁 GenAI-Reviewed Fraud Logs")
+    st.subheader("GenAI-Reviewed Fraud Logs")
 
     conn = get_connection()
     df = pd.read_sql_query("""
@@ -108,6 +108,6 @@ with tab3:
     conn.close()
 
     if df.empty:
-        st.info("🕵️‍♀️ No transactions explained yet. Go to Tab 2 to analyze some!")
+        st.info("No transactions explained yet. Go to Tab 2 to analyze some!")
     else:
         st.dataframe(df, use_container_width=True)
