@@ -1,6 +1,3 @@
-from setup_services import setup_services
-setup_services()
-
 import streamlit as st
 import sqlite3
 import pandas as pd
